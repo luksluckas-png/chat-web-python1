@@ -2,69 +2,107 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat</title>
-<link rel="stylesheet" href="/static/style.css">
+<title>Chat Web</title>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<style>
+body {
+    background: #0f0f0f;
+    color: white;
+    font-family: Arial;
+}
+
+#chat {
+    max-width: 600px;
+    margin: auto;
+    padding: 10px;
+}
+
+.msg {
+    background: #1c1c1c;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+
+.img-chat {
+    max-width: 200px;
+    border-radius: 10px;
+    margin-top: 5px;
+}
+
+#input-area {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+</style>
 </head>
 
 <body>
-<div class="app">
 
-  <div class="header">
-    <span>💬 Chat Web</span>
-    <input id="nick" placeholder="Seu nickname">
-  </div>
+<div id="chat"></div>
 
-  <div id="msgs" class="messages"></div>
-
-  <div class="input-area">
-  <input type="file" id="file">
-  <input id="msg" placeholder="Digite sua mensagem">
-  <button onclick="send()">➤</button>
-</div>
-<script>
-function sendFile() {
-  const fileInput = document.getElementById("file");
-  if (fileInput.files.length === 0) return;
-
-  const data = new FormData();
-  data.append("file", fileInput.files[0]);
-
-  fetch("/upload", {
-    method: "POST",
-    body: data
-  });
-
-  fileInput.value = "";
-}
-
-document.getElementById("file").addEventListener("change", sendFile);
-</script>
-
+<div id="input-area">
+    <input id="msg" placeholder="Digite sua mensagem">
+    <input type="file" id="fileInput">
+    <button onclick="enviar()">Enviar</button>
 </div>
 
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-const socket = io();
+const socket = io()
 
-function send(){
-  const nick = document.getElementById("nick").value || "Anônimo";
-  const msgInput = document.getElementById("msg");
-  if(msgInput.value.trim() === "") return;
-
-  socket.send(nick + ": " + msgInput.value);
-  msgInput.value = "";
+function enviar() {
+    const input = document.getElementById("msg")
+    if (input.value.trim() !== "") {
+        socket.send(input.value)
+        input.value = ""
+    }
 }
 
-socket.on("message", msg => {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.textContent = msg;
-  document.getElementById("msgs").appendChild(div);
-  div.scrollIntoView({behavior: "smooth"});
-});
+function enviarArquivo() {
+    const fileInput = document.getElementById("fileInput")
+    const file = fileInput.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    fetch("/upload", {
+        method: "POST",
+        body: formData
+    })
+
+    fileInput.value = ""
+}
+
+document.getElementById("fileInput").addEventListener("change", enviarArquivo)
+
+socket.on("message", (data) => {
+    const chat = document.getElementById("chat")
+
+    if (typeof data === "string") {
+        chat.innerHTML += `<div class="msg">${data}</div>`
+    } else if (data.tipo === "arquivo") {
+        if (data.nome.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            chat.innerHTML += `
+                <div class="msg">
+                    <img src="${data.url}" class="img-chat">
+                </div>
+            `
+        } else {
+            chat.innerHTML += `
+                <div class="msg">
+                    📁 <a href="${data.url}" target="_blank">${data.nome}</a>
+                </div>
+            `
+        }
+    }
+
+    chat.scrollTop = chat.scrollHeight
+})
 </script>
 
 </body>
 </html>
-
