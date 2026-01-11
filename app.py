@@ -1,3 +1,5 @@
+from flask import request
+from werkzeug.utils import secure_filename
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 import os, time
@@ -38,3 +40,16 @@ limpar_arquivos()
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=10000)
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files.get("file")
+    if not file:
+        return "Nenhum arquivo", 400
+
+    nome = secure_filename(file.filename)
+    caminho = os.path.join(UPLOADS, nome)
+    file.save(caminho)
+
+    socketio.send(f"📁 Arquivo enviado: {nome}")
+    return "OK", 200
+
