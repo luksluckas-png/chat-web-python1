@@ -4,181 +4,138 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Chat Web</title>
-
+<title>Chat</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
 body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: "Segoe UI", sans-serif;
-    background: linear-gradient(135deg, #5f2cff, #00d4ff);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#app {
-    width: 100%;
-    max-width: 420px;
-    height: 90vh;
-    background: rgba(15, 15, 20, 0.85);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
-
-#top {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-#nick {
-    flex: 1;
-    padding: 10px;
-    border-radius: 12px;
-    border: none;
-    background: #1e1e2a;
+    background: radial-gradient(circle, #1b1b2f, #0f0f0f);
+    font-family: Arial;
     color: white;
+    margin: 0;
 }
 
 #chat {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 5px;
+    max-width: 600px;
+    margin: auto;
+    padding: 10px;
 }
 
 .msg {
-    background: #1e1e2a;
-    border-radius: 15px;
+    background: rgba(255,255,255,0.08);
     padding: 10px;
-    margin-bottom: 8px;
-    animation: fadeUp 0.3s ease;
-}
-
-.nick {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-bottom: 4px;
-}
-
-.img-chat {
-    max-width: 100%;
     border-radius: 12px;
+    margin-bottom: 8px;
+    animation: fade 0.3s ease;
+}
+
+@keyframes fade {
+    from {opacity:0; transform:translateY(5px)}
+    to {opacity:1}
+}
+
+img {
+    max-width: 100%;
+    border-radius: 10px;
     margin-top: 5px;
 }
 
-#input-area {
-    display: flex;
-    gap: 6px;
-    margin-top: 10px;
+audio {
+    width: 100%;
+    margin-top: 5px;
 }
 
-#msg {
-    flex: 1;
-    padding: 10px;
-    border-radius: 12px;
+#input {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #111;
+    padding: 8px;
+    display: flex;
+    gap: 5px;
+}
+
+input, button {
+    border-radius: 8px;
     border: none;
+    padding: 8px;
 }
 
 button {
-    background: linear-gradient(135deg, #7f5cff, #00d4ff);
-    border: none;
+    background: #6a5cff;
     color: white;
-    border-radius: 12px;
-    padding: 10px 14px;
-}
-
-@keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 </style>
 </head>
 
 <body>
 
-<div id="app">
+<div id="chat"></div>
 
-    <div id="top">
-        <input id="nick" placeholder="Seu nick">
-    </div>
-
-    <div id="chat"></div>
-
-    <div id="input-area">
-        <input id="msg" placeholder="Mensagem">
-        <input type="file" id="fileInput" hidden>
-        <button onclick="document.getElementById('fileInput').click()">📎</button>
-        <button onclick="enviar()">➤</button>
-    </div>
-
+<div id="input">
+    <input id="nick" placeholder="Nick">
+    <input id="msg" placeholder="Mensagem">
+    <input type="file" id="file">
+    <button onclick="enviar()">Enviar</button>
 </div>
 
 <script>
 const socket = io()
+const chat = document.getElementById("chat")
+const nickInput = document.getElementById("nick")
+
+nickInput.value = localStorage.getItem("nick") || ""
+
+nickInput.onchange = () => {
+    localStorage.setItem("nick", nickInput.value)
+}
 
 function enviar() {
     const msg = document.getElementById("msg")
-    const nick = document.getElementById("nick").value || "Alguém"
+    if (!msg.value) return
 
-    if (msg.value.trim() !== "") {
-        socket.send(`${nick}: ${msg.value}`)
-        msg.value = ""
-    }
-}
-
-document.getElementById("fileInput").addEventListener("change", () => {
-    const file = fileInput.files[0]
-    if (!file) return
-
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("nick", document.getElementById("nick").value || "Alguém")
-
-    fetch("/upload", {
-        method: "POST",
-        body: formData
+    socket.send({
+        nick: nickInput.value || "Anon",
+        tipo: "texto",
+        texto: msg.value
     })
 
-    fileInput.value = ""
+    msg.value = ""
+}
+
+document.getElementById("file").addEventListener("change", () => {
+    const f = document.getElementById("file").files[0]
+    if (!f) return
+
+    const form = new FormData()
+    form.append("file", f)
+    form.append("nick", nickInput.value || "Anon")
+
+    fetch("/upload", { method: "POST", body: form })
 })
 
-socket.on("message", (data) => {
-    const chat = document.getElementById("chat")
+socket.on("message", data => {
+    const div = document.createElement("div")
+    div.className = "msg"
 
-    if (typeof data === "string") {
-        chat.innerHTML += `
-            <div class="msg">
-                ${data}
-            </div>
-        `
-    } else if (data.tipo === "arquivo") {
-        if (data.nome.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-            chat.innerHTML += `
-                <div class="msg">
-                    <div class="nick">${data.nick}</div>
-                    <img src="${data.url}" class="img-chat">
-                </div>
-            `
-        }
+    if (data.tipo === "texto") {
+        div.innerHTML = `<b>${data.nick}:</b> ${data.texto}`
     }
 
-    chat.scrollTop = chat.scrollHeight
+    if (data.tipo === "imagem") {
+        div.innerHTML = `<b>${data.nick}</b><br><img src="${data.url}">`
+    }
+
+    if (data.tipo === "audio") {
+        div.innerHTML = `<b>${data.nick}</b><br><audio controls src="${data.url}"></audio>`
+    }
+
+    if (data.tipo === "arquivo") {
+        div.innerHTML = `📁 <a href="${data.url}" target="_blank">${data.nome}</a>`
+    }
+
+    chat.appendChild(div)
+    window.scrollTo(0, document.body.scrollHeight)
 })
 </script>
 
