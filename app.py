@@ -1,7 +1,6 @@
-from flask import request
-from werkzeug.utils import secure_filename
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO
+from werkzeug.utils import secure_filename
 import os, time
 
 app = Flask(__name__)
@@ -28,18 +27,7 @@ def mensagem(msg):
         f.write(msg + "\n")
     socketio.send(msg)
 
-def limpar_arquivos():
-    agora = time.time()
-    for arq in os.listdir(UPLOADS):
-        caminho = os.path.join(UPLOADS, arq)
-        if os.path.isfile(caminho):
-            if (agora - os.path.getctime(caminho)) > 7 * 86400:
-                os.remove(caminho)
-
-limpar_arquivos()
-
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=10000)
+# 🔽 ROTA DE UPLOAD TEM QUE FICAR AQUI
 @app.route("/upload", methods=["POST"])
 def upload():
     file = request.files.get("file")
@@ -53,3 +41,16 @@ def upload():
     socketio.send(f"📁 Arquivo enviado: {nome}")
     return "OK", 200
 
+def limpar_arquivos():
+    agora = time.time()
+    for arq in os.listdir(UPLOADS):
+        caminho = os.path.join(UPLOADS, arq)
+        if os.path.isfile(caminho):
+            if (agora - os.path.getctime(caminho)) > 7 * 86400:
+                os.remove(caminho)
+
+limpar_arquivos()
+
+# 🔽 SEMPRE POR ÚLTIMO
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=10000)
