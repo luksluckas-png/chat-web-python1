@@ -2,184 +2,138 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Chat Web</title>
-
+<title>Chat</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
 body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: "Segoe UI", sans-serif;
-    background: linear-gradient(135deg, #5f2cff, #00d4ff);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#app {
-    width: 100%;
-    max-width: 420px;
-    height: 90vh;
-    background: rgba(15, 15, 20, 0.85);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
-
-#top {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-#nick {
-    flex: 1;
-    padding: 10px;
-    border-radius: 12px;
-    border: none;
-    background: #1e1e2a;
+    background: #0f0f0f;
     color: white;
+    font-family: Arial;
+    margin: 0;
 }
 
 #chat {
-    flex: 1;
+    padding: 10px;
+    height: 75vh;
     overflow-y: auto;
-    padding-right: 5px;
 }
 
 .msg {
-    background: #1e1e2a;
-    border-radius: 15px;
-    padding: 10px;
-    margin-bottom: 8px;
-    animation: fadeUp 0.3s ease;
+    background: #1e1e1e;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
 }
 
-.nick {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-bottom: 4px;
-}
-
-.img-chat {
-    max-width: 100%;
-    border-radius: 12px;
-    margin-top: 5px;
-}
-
-#input-area {
+.perfil {
     display: flex;
+    align-items: center;
     gap: 6px;
-    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
-#msg {
-    flex: 1;
+.perfil img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+img.chat-img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+#input {
+    display: flex;
+    gap: 5px;
     padding: 10px;
-    border-radius: 12px;
-    border: none;
 }
 
-button {
-    background: linear-gradient(135deg, #7f5cff, #00d4ff);
+input, button {
+    padding: 8px;
+    border-radius: 6px;
     border: none;
-    color: white;
-    border-radius: 12px;
-    padding: 10px 14px;
-}
-
-@keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 </style>
 </head>
 
 <body>
 
-<div id="app">
+<div class="perfil">
+    <img id="avatar" src="" alt="foto">
+    <input id="nick" placeholder="Seu nome" style="width:100px">
+    <input type="file" id="foto" accept="image/*">
+</div>
 
-    <div id="top">
-        <input id="nick" placeholder="Seu nick">
-    </div>
+<div id="chat"></div>
 
-    <div id="chat"></div>
-
-    <div id="input-area">
-        <input id="msg" placeholder="Mensagem">
-        <input type="file" id="fileInput" hidden>
-        <button onclick="document.getElementById('fileInput').click()">📎</button>
-        <button onclick="enviar()">➤</button>
-    </div>
-
+<div id="input">
+    <input id="msg" placeholder="Mensagem" style="flex:1">
+    <input type="file" id="file">
+    <button onclick="enviar()">Enviar</button>
 </div>
 
 <script>
 const socket = io()
+const chat = document.getElementById("chat")
+
+// ===== NOME FIXO =====
+const nickInput = document.getElementById("nick")
+nickInput.value = localStorage.getItem("nick") || ""
+nickInput.onchange = () => localStorage.setItem("nick", nickInput.value)
+
+// ===== FOTO DE PERFIL =====
+const avatar = document.getElementById("avatar")
+const fotoInput = document.getElementById("foto")
+
+const fotoSalva = localStorage.getItem("foto")
+if (fotoSalva) avatar.src = fotoSalva
+
+fotoInput.onchange = () => {
+    const file = fotoInput.files[0]
+    const reader = new FileReader()
+    reader.onload = () => {
+        localStorage.setItem("foto", reader.result)
+        avatar.src = reader.result
+    }
+    reader.readAsDataURL(file)
+}
 
 function enviar() {
     const msg = document.getElementById("msg")
-    const nick = document.getElementById("nick").value || "Alguém"
-
-    if (msg.value.trim() !== "") {
+    const nick = nickInput.value || "Anônimo"
+    if (msg.value.trim()) {
         socket.send(`${nick}: ${msg.value}`)
         msg.value = ""
     }
 }
 
-document.getElementById("fileInput").addEventListener("change", () => {
-    const file = fileInput.files[0]
-    if (!file) return
-
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("nick", document.getElementById("nick").value || "Alguém")
-
-    fetch("/upload", {
-        method: "POST",
-        body: formData
-    })
-
-    fileInput.value = ""
-})
-
-socket.on("message", (data) => {
-    const chat = document.getElementById("chat")
-
-    if (typeof data === "string") {
-        chat.innerHTML += `
-            <div class="msg">
-                ${data}
-            </div>
-        `
-    } else if (data.tipo === "arquivo") {
-        if (data.nome.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-            chat.innerHTML += `
-                <div class="msg">
-                    <div class="nick">${data.nick}</div>
-                    <img src="${data.url}" class="img-chat">
-                </div>
-            `
-        }
-    }
-
+socket.on("message", data => {
+    chat.innerHTML += `<div class="msg">${data}</div>`
     chat.scrollTop = chat.scrollHeight
 })
+
+document.getElementById("file").onchange = () => {
+    const file = document.getElementById("file").files[0]
+    if (!file) return
+
+    const fd = new FormData()
+    fd.append("file", file)
+
+    fetch("/upload", { method: "POST", body: fd })
+    .then(r => r.json())
+    .then(d => {
+        if (d.nome.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+            chat.innerHTML += `<div class="msg"><img src="${d.url}" class="chat-img"></div>`
+        } else {
+            chat.innerHTML += `<div class="msg">📦 <a href="${d.url}" target="_blank">${d.nome}</a></div>`
+        }
+        chat.scrollTop = chat.scrollHeight
+    })
+
+    document.getElementById("file").value = ""
+}
 </script>
 
 </body>
