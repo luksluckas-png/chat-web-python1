@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+<div class="app">
+
+  <div class="header">
+    <span>💬 Chat Web</span>
+    <input id="nick" placeholder="Seu nickname">
+  </div>
+
+  <div id="msgs" class="messages"></div>
+
+  <div class="input-area">
+    <input id="msg" placeholder="Digite sua mensagem">
+    <button onclick="send()">➤</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+function send(){
+  const nick = document.getElementById("nick").value || "Anônimo";
+  const msgInput = document.getElementById("msg");
+  if(msgInput.value.trim() === "") return;
+
+  socket.send(nick + ": " + msgInput.value);
+  msgInput.value = "";
+}
+
+socket.on("message", msg => {
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.textContent = msg;
+  document.getElementById("msgs").appendChild(div);
+  div.scrollIntoView({behavior: "smooth"});
+});
+</script>
+
+</body>
+</html>
