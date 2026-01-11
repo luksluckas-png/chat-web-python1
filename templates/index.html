@@ -10,32 +10,55 @@
 body {
     background: #0f0f0f;
     color: white;
-    font-family: Arial;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
 }
 
 #chat {
     max-width: 600px;
     margin: auto;
     padding: 10px;
+    min-height: 80vh;
 }
 
 .msg {
     background: #1c1c1c;
-    padding: 8px;
+    padding: 8px 10px;
     border-radius: 8px;
     margin-bottom: 6px;
+    word-break: break-word;
 }
 
 .img-chat {
-    max-width: 200px;
+    max-width: 220px;
     border-radius: 10px;
     margin-top: 5px;
 }
 
 #input-area {
+    max-width: 600px;
+    margin: auto;
     display: flex;
     gap: 5px;
-    margin-top: 10px;
+    padding: 10px;
+}
+
+#msg {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+}
+
+button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #2979ff;
+    color: white;
+    cursor: pointer;
 }
 </style>
 </head>
@@ -52,11 +75,14 @@ body {
 
 <script>
 const socket = io()
+const chat = document.getElementById("chat")
 
 function enviar() {
     const input = document.getElementById("msg")
-    if (input.value.trim() !== "") {
-        socket.send(input.value)
+    const texto = input.value.trim()
+
+    if (texto !== "") {
+        socket.send(texto)
         input.value = ""
     }
 }
@@ -77,21 +103,31 @@ function enviarArquivo() {
     fileInput.value = ""
 }
 
-document.getElementById("fileInput").addEventListener("change", enviarArquivo)
+document.getElementById("fileInput")
+    .addEventListener("change", enviarArquivo)
 
+// RECEBER MENSAGENS
 socket.on("message", (data) => {
-    const chat = document.getElementById("chat")
 
+    // TEXTO NORMAL
     if (typeof data === "string") {
         chat.innerHTML += `<div class="msg">${data}</div>`
-    } else if (data.tipo === "arquivo") {
-        if (data.nome.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+    }
+
+    // ARQUIVO
+    else if (data && data.tipo === "arquivo") {
+
+        // IMAGEM
+        if (data.nome && data.nome.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
             chat.innerHTML += `
                 <div class="msg">
                     <img src="${data.url}" class="img-chat">
                 </div>
             `
-        } else {
+        }
+
+        // OUTROS ARQUIVOS
+        else {
             chat.innerHTML += `
                 <div class="msg">
                     📁 <a href="${data.url}" target="_blank">${data.nome}</a>
